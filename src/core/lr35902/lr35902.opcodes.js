@@ -82,18 +82,121 @@ export default class LR35902OpCodes {
       /**
        * LDAn
        */
-      0x7f: ins.LDAn("A"),
-      0x78: ins.LDAn("B"),
-      0x79: ins.LDAn("C"),
-      0x7a: ins.LDAn("D"),
-      0x7b: ins.LDAn("E"),
-      0x7c: ins.LDAn("H"),
-      0x7d: ins.LDAn("L"),
+      // 0x7f: ins.LDAn("A"), // LDr1r2
+      // 0x78: ins.LDAn("B"), // LDr1r2
+      // 0x79: ins.LDAn("C"), // LDr1r2
+      // 0x7a: ins.LDAn("D"), // LDr1r2
+      // 0x7b: ins.LDAn("E"), // LDr1r2
+      // 0x7c: ins.LDAn("H"), // LDr1r2
+      // 0x7d: ins.LDAn("L"), // LDr1r2
       0x0a: ins.LDAn("BC"),
       0x1a: ins.LDAn("DE"),
-      0x7e: ins.LDAn("HL"),
+      // 0x7e: ins.LDAn("HL") // LDr1r2
       0xfa: ins.LDAn("nn"),
-      0x3e: ins.LDAn() // TODO: inplementation (what is #)
+      0x3e: ins.LDAn(),
+      /**
+       * LDnA
+       */
+      // 0x7f: ins.LDnA("A"),
+      0x47: ins.LDnA("B"),
+      0x4f: ins.LDnA("C"),
+      0x57: ins.LDnA("D"),
+      0x5f: ins.LDnA("E"),
+      0x67: ins.LDnA("H"),
+      0x6f: ins.LDnA("L"),
+      0x02: ins.LDnA("BC"),
+      0x12: ins.LDnA("DE"),
+      0x77: ins.LDnA("HL"),
+      0xea: ins.LDnA("nn"),
+      /**
+       * LDAC
+       */
+      0xf2: ins.LDAC(),
+      /**
+       * LDCA
+       */
+      0xe2: ins.LDCA(),
+      /**
+       * LDAHLD
+       */
+      0x3a: ins.LDDAHL(),
+      /**
+       * LDDHLA
+       */
+      0x32: ins.LDDHLA(),
+      /**
+       * LDIAHL
+       */
+      0x2a: ins.LDIAHL(),
+      /**
+       * LDIHLA
+       */
+      0x22: ins.LDIHLA(),
+      /**
+       * LDHnA
+       */
+      0xe0: ins.LDHnA(),
+      /**
+       * LDHAn
+       */
+      0xf0: ins.LDHAn(),
+
+      /**
+       * 16-bit Loads (LD)
+       */
+      /**
+       * LDnnn_16
+       */
+      0x01: ins.LDnnn_16("BC"),
+      0x11: ins.LDnnn_16("DE"),
+      0x21: ins.LDnnn_16("HL"),
+      0x31: ins.LDnnn_16("SP"),
+      /**
+       * LDSPHL
+       */
+      0xf9: ins.LDSPHL(),
+      /**
+       * LDHLSPn
+       */
+      0xf8: ins.LDHLSPn(),
+      /**
+       * PUSH nn
+       */
+      0xf5: ins.PUSHnn("AF"),
+      0xc5: ins.PUSHnn("BC"),
+      0xd5: ins.PUSHnn("DE"),
+      0xe5: ins.PUSHnn("HL"),
+      /**
+       * POP nn
+       */
+      0xf1: ins.POPnn("AF"),
+      0xc1: ins.POPnn("BC"),
+      0xd1: ins.POPnn("DE"),
+      0xe1: ins.POPnn("HL"),
+      /**
+       * ADD(n)
+       */
+      0x87: ins.ADD("A"),
+      0x80: ins.ADD("B"),
+      0x81: ins.ADD("C"),
+      0x82: ins.ADD("D"),
+      0x83: ins.ADD("E"),
+      0x84: ins.ADD("H"),
+      0x85: ins.ADD("L"),
+      0x86: ins.ADD("HL"),
+      0xc6: ins.ADD("#"),
+      /**
+       * SUB(n)
+       */
+      0x97: ins.SUB("A"),
+      0x90: ins.SUB("B"),
+      0x91: ins.SUB("C"),
+      0x92: ins.SUB("D"),
+      0x93: ins.SUB("E"),
+      0x94: ins.SUB("H"),
+      0x95: ins.SUB("L"),
+      0x96: ins.SUB("HL"),
+      0xD6: ins.SUB("#"),
     };
   }
 }

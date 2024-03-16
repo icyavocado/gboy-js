@@ -1,6 +1,6 @@
-import Gameboy from "./gameboy";
+import Gameboy from './gameboy'
 
-const canvas = document.getElementById("gameboy-canvas");
-const gameboy = new Gameboy(canvas);
+const canvas = document.getElementById('gameboy-canvas')
+const gameboy = new Gameboy(canvas)
 
-gameboy.start();
+gameboy.start()

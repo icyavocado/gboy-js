@@ -1,7 +1,8 @@
+import helper from './lr35902.helper'
 export default class LR35902Instructions {
   constructor(cpu, memory) {
-    this.CPU = cpu;
-    this.m = memory;
+    this.CPU = cpu
+    this.m = memory
   }
   /**
    * 8-bit Load (LD) instructions
@@ -15,7 +16,7 @@ export default class LR35902Instructions {
    *  n = 8 bit immediate value
    */
   LDnnn(rr) {
-    this.write(this.CPU._n, this.CPU[rr]);
+    this.write(this.CPU._n, this.CPU[rr])
   }
 
   /**
@@ -25,7 +26,7 @@ export default class LR35902Instructions {
    *  r1,r2 = A,B,C,D,E,H,L,(HL)
    */
   LDr1r2(r1, r2) {
-    this.CPU[r1] = this.CPU[r2];
+    this.CPU[r1] = this.CPU[r2]
   }
 
   /**
@@ -36,7 +37,18 @@ export default class LR35902Instructions {
    *  nn = two byte immediate value. (LS byte first.)
    */
   LDAn(n) {
-    this.CPU.A = n == "#" ? this.i8bit : n === "nn" ? this.i16bit : this.CPU[n];
+    let value = 0
+    switch (n) {
+      case '#':
+        value = this.CPU._n
+        break
+      case 'nn':
+        value = this.CPU._nn
+        break
+      default:
+        value = this.CPU[n]
+    }
+    this.CPU.A = value
   }
   /**
    * Description:
@@ -46,12 +58,13 @@ export default class LR35902Instructions {
    *  nn = two byte immediate value. (LS byte first.)
    */
   LDnA(n) {
-    if (!n) {
-      this._w16(this.i16bit, this.CPU.A);
-    } else {
-      this.CPU[n] = this.CPU.A;
+    switch (n) {
+      case 'nn':
+        this.write(this.CPU._nn, this.CPU.A)
+        break
+      default:
+        this.CPU[n] = this.CPU.A
     }
-    this.CPU.cycles += 4;
   }
   /**
    * Description:
@@ -59,16 +72,14 @@ export default class LR35902Instructions {
    * Same as: LD A,($FF00+C)
    */
   LDAC() {
-    this.CPU.A = this.read(0xff + this.CPU.C);
-    this.CPU.cycles += 4;
+    this.CPU.A = this.read(new Uint16Array([0xff + this.CPU.C])[0])
   }
   /**
    * Description:
    * Put A into address $FF00 + register C.
    */
   LDCA() {
-    this.write(0xff + this.CPU.C, this.CPU.A);
-    this.CPU.cycles += 4;
+    this.write(new Uint16Array([0xff + this.CPU.C])[0], this.CPU.A)
   }
   /**
    * LD A,(HLD)
@@ -85,8 +96,8 @@ export default class LR35902Instructions {
    *    Same as: LD A,(HL) - DEC HL
    */
   LDDAHL() {
-    this.CPU.A = this.CPU.HL;
-    this.CPU.HL--;
+    this.CPU.A = this.read(this.CPU.HL)
+    this.CPU.HL--
   }
   /**
    * LD (HLD),A
@@ -103,8 +114,8 @@ export default class LR35902Instructions {
    *    Same as: LD (HL),A - DEC HL
    */
   LDDHLA() {
-    this.CPU.HL = this.CPU.A;
-    this.CPU.HL--;
+    this.write(this.CPU.HL, this.CPU.A)
+    this.CPU.HL--
   }
   /**
    * LD A,(HLI)
@@ -121,8 +132,8 @@ export default class LR35902Instructions {
    *    Same as: LD A,(HL) - INC HL
    */
   LDIAHL() {
-    this.CPU.A = this.CPU.HL;
-    this.CPU.HL++;
+    this.CPU.A = this.read(this.CPU.HL)
+    this.CPU.HL++
   }
   /**
    * LD (HLI),A
@@ -139,8 +150,8 @@ export default class LR35902Instructions {
    *    Same as: LD (HL),A - INC HL
    */
   LDIHLA() {
-    this.CPU.HL = this.CPU.A;
-    this.CPU.HL++;
+    this.write(this.CPU.HL, this.CPU.A)
+    this.CPU.HL++
   }
   /**
    * LDH (n),A
@@ -150,7 +161,7 @@ export default class LR35902Instructions {
    *    n = one byte immediate value.
    */
   LDHnA() {
-    this.write(0xff + this.i8bit, this.CPU.A);
+    this.write(new Uint16Array([0xff00 + this.CPU._n])[0], this.CPU.A)
   }
   /**
    * LDH A,(n)
@@ -160,9 +171,8 @@ export default class LR35902Instructions {
    *    n = one byte immediate value.
    */
   LDHAn() {
-    this.CPU.A = this.read(0xff + this.i8bit);
+    this.CPU.A = this.read(new Uint16Array([0xff00 + this.CPU._n])[0])
   }
-
   /**
    * 16-bit Loads (LD) instructions
    */
@@ -175,7 +185,7 @@ export default class LR35902Instructions {
    *     nn = 16 bit immediate value
    */
   LDnnn_16(n) {
-    this.CPU[n] = this.i16bit;
+    this.CPU[n] = this.CPU._nn
   }
   /**
    * LD SP,HL
@@ -183,7 +193,7 @@ export default class LR35902Instructions {
    *    Put HL into Stack Pointer (SP).
    */
   LDSPHL() {
-    this.CPU.SP = this.CPU.HL;
+    this.CPU.SP = this.CPU.HL
   }
   /**
    * LD HL,SP+n
@@ -202,9 +212,9 @@ export default class LR35902Instructions {
    *    C - Set or reset according to operation.
    */
   LDHLSPn() {
-    this.CPU.HL = this.CPU.SP + this.i8bit_signed;
-    this.CPU.z = 0;
-    this.CPU.n = 0;
+    this.CPU.HL = new Uint16Array([this.CPU.SP + this.CPU._n_signed])[0]
+    this.CPU.z = 0
+    this.CPU.n = 0
   }
   /**
    * LD (nn),SP
@@ -214,7 +224,7 @@ export default class LR35902Instructions {
    *    nn = two byte immediate address.
    */
   LDnnSP() {
-    this.write(this.i16bit, this.CPU.SP);
+    this.write(this.CPU._nn, this.CPU.SP)
   }
   /**
    * PUSH nn
@@ -225,10 +235,10 @@ export default class LR35902Instructions {
    *    nn = AF,BC,DE,HL
    */
   PUSHnn(nn) {
-    this.CPU[nn[0]] = this.read(this.CPU.SP);
-    this.CPU.SP--;
-    this.CPU[nn[1]] = this.read(this.CPU.SP);
-    this.CPU.SP--;
+    this.CPU[nn[0]] = this.read(this.CPU.SP)
+    this.CPU.SP--
+    this.CPU[nn[1]] = this.read(this.CPU.SP)
+    this.CPU.SP--
   }
   /**
    * POP nn
@@ -237,12 +247,12 @@ export default class LR35902Instructions {
    * Increment Stack Pointer (SP) twice.
    * Use with:
    * nn = AF,BC,DE,H
-  */
+   */
   POPnn(nn) {
-    this.CPU[nn[0]] = this.read(this.CPU.SP);
-    this.CPU.SP++;
-    this.CPU[nn[1]] = this.read(this.CPU.SP);
-    this.CPU.SP++;
+    this.CPU[nn[0]] = this.read(this.CPU.SP)
+    this.CPU.SP++
+    this.CPU[nn[1]] = this.read(this.CPU.SP)
+    this.CPU.SP++
   }
   /**
    * 8-BIT ALU
@@ -261,10 +271,14 @@ export default class LR35902Instructions {
    *  C - Set if carry from bit 7
    */
   ADD(n) {
-    this.CPU.A += n != "#" ? this.CPU[n] : this.read();
-    if (!this.CPU.A) this.CPU.z = 0x01;
-    this.CPU.n = 0;
-    // TODO: implement flags
+    const r2 = n != '#' ? this.CPU[n] : this.CPU._n
+    const r1 = this.CPU.A * 1
+    this.CPU.A += r2
+    // Flags
+    if (this.CPU.A === 0) this.CPU.z = 1
+    this.CPU.n = 0
+    if (helper.isHalfCarry(r1, r2)) this.CPU.h = 1
+    if (helper.isCarry(r1, r2)) this.CPU.c = 1
   }
   /**
    * ADC n
@@ -279,24 +293,37 @@ export default class LR35902Instructions {
    *  C - Set if carry from bit 7.
    */
   ADC(n) {
-    // TODO
+    let r2 = n != '#' ? this.CPU[n] : this.CPU._n
+    r2 += this.CPU.h
+    const r1 = this.CPU.A * 1
+    this.CPU.A += r2
+    // Flags
+    if (this.CPU.A === 0) this.CPU.z = 1
+    this.CPU.n = 0
+    if (helper.isHalfCarry(r1, r2)) this.CPU.h = 1
+    if (helper.isCarry(r1, r2)) this.CPU.c = 1
   }
   /**
    * SUB n
-  * Description:
-  *  Subtract n from A.
-  * Use with:
-  *  n = A,B,C,D,E,H,L,(HL),#
-  * Flags affected:
-  *  Z - Set if result is zero.
-  *  N - Set.
-  *  H - Set if no borrow from bit 4.
-  *  C - Set if no borrow.
-  */
+   * Description:
+   *  Subtract n from A.
+   * Use with:
+   *  n = A,B,C,D,E,H,L,(HL),#
+   * Flags affected:
+   *  Z - Set if result is zero.
+   *  N - Set.
+   *  H - Set if no borrow from bit 4.
+   *  C - Set if no borrow.
+   */
   SUB(n) {
-    this.CPU.A -= n != "#" ? this.CPU[n] : this.read();
-    if (!this.CPU.A) this.CPU.z = 0x01;
-    // TODO: implement flags
+    let r2 = n != '#' ? this.CPU[n] : this.CPU._n
+    const r1 = this.CPU.A * 1
+    this.CPU.A -= r2
+    // Flags
+    if (this.CPU.A === 0) this.CPU.z = 1
+    this.CPU.n = 1
+    if (!helper.isHalfBorrow(r1, r2)) this.CPU.h = 1
+    if (!helper.isBorrow(r1, r2)) this.CPU.c = 1
   }
   /**
    * SBC n
@@ -311,7 +338,15 @@ export default class LR35902Instructions {
    *  C - Set if no borrow.
    */
   SBC(n) {
-
+    let r2 = n != '#' ? this.CPU[n] : this.CPU._n
+    r2 += this.CPU.h
+    const r1 = this.CPU.A * 1
+    this.CPU.A -= r2
+    // Flags
+    if (this.CPU.A === 0) this.CPU.z = 1
+    this.CPU.n = 1
+    if (!helper.isHalfBorrow(r1, r2)) this.CPU.h = 1
+    if (!helper.isBorrow(r1, r2)) this.CPU.c = 1
   }
   /**
    * AND n
@@ -326,7 +361,13 @@ export default class LR35902Instructions {
    *  C - Reset.
    */
   AND(n) {
-
+    let r2 = n != '#' ? this.CPU[n] : this.CPU._n
+    this.CPU.A &= r2
+    // Flags
+    if (this.CPU.A === 0) this.CPU.z = 1
+    this.CPU.n = 1
+    this.CPU.h = 1
+    this.CPU.c = 0
   }
   /**
    * OR n
@@ -341,7 +382,13 @@ export default class LR35902Instructions {
    *  C - Reset.
    */
   OR(n) {
-
+    let r2 = n != '#' ? this.CPU[n] : this.CPU._n
+    this.CPU.A |= r2
+    // Flags
+    if (this.CPU.A === 0) this.CPU.z = 1
+    this.CPU.n = 0
+    this.CPU.h = 0
+    this.CPU.c = 0
   }
   /**
    * XOR n
@@ -356,7 +403,13 @@ export default class LR35902Instructions {
    *  C - Reset.
    */
   XOR(n) {
-
+    let r2 = n != '#' ? this.CPU[n] : this.CPU._n
+    this.CPU.A ^= r2
+    // Flags
+    if (this.CPU.A === 0) this.CPU.z = 1
+    this.CPU.n = 0
+    this.CPU.h = 0
+    this.CPU.c = 0
   }
   /**
    * CP n
@@ -373,7 +426,13 @@ export default class LR35902Instructions {
    *  C - Set for no borrow. (Set if A < n.)
    */
   CP(n) {
-
+    let r2 = n != '#' ? this.CPU[n] : this.CPU._n
+    // Flags
+    if (this.CPU.A === r2) this.CPU.z = 1
+    this.CPU.n = 1
+    if (!helper.isHalfBorrow(this.CPU.A, r2)) this.CPU.h = 1
+    // if (!helper.isBorrow(this.CPU.A, r2)) this.c = 1;
+    if (this.CPU.A < r2) this.CPU.c = 1
   }
   /**
    * INC n
@@ -388,7 +447,11 @@ export default class LR35902Instructions {
    *  C - Not affected.
    */
   INC(n) {
-
+    this.CPU[n]++
+    // Flags
+    if (this.CPU[n] === 0) this.CPU.z = 1
+    this.CPU.n = 0
+    if (helper.isHalfCarry(this.CPU[n], 1)) this.CPU.h = 1
   }
   /**
    * DEC n
@@ -403,7 +466,11 @@ export default class LR35902Instructions {
    *  C - Not affected.
    */
   DEC(n) {
-
+    this.CPU[n]--
+    // Flags
+    if (this.CPU[n] === 0) this.CPU.z = 1
+    this.CPU.n = 1
+    if (helper.isHalfBorrow(this.CPU[n], 1)) this.CPU.h = 1
   }
   /**
    * 16-Bit Arithmetic
@@ -419,10 +486,16 @@ export default class LR35902Instructions {
    *  Z - Not affected.
    *  N - Reset.
    *  H - Set if carry from bit 11.
-   *  C - Set if carry from bit 15. 
+   *  C - Set if carry from bit 15.
    */
   ADDHLn(n) {
-
+    const r2 = this.CPU[n]
+    const r1 = this.CPU.HL * 1
+    this.CPU.HL += r2
+    // Flags
+    this.CPU.n = 0
+    if (this.isHalfCarry(r1, r2)) this.CPU.h = 1
+    if (this.isCarry(r1, r2)) this.CPU.c = 1
   }
   /**
    * ADD SP,n
@@ -436,8 +509,13 @@ export default class LR35902Instructions {
    *  H - Set or reset according to operation.
    *  C - Set or reset according to operation.
    */
-  ADDSPn(n) {
-
+  ADDSPn() {
+    const n = this.CPU._n
+    this.CPU.SP += n
+    // Flags
+    this.CPU.z = 0
+    this.CPU.n = 0
+    // TODO: H and C flags
   }
   /**
    * INC nn
@@ -449,7 +527,7 @@ export default class LR35902Instructions {
    *  None.
    */
   INCnn(nn) {
-
+    this.CPU[nn]++
   }
   /**
    * DEC nn
@@ -461,7 +539,7 @@ export default class LR35902Instructions {
    *  None.
    */
   DECnn(nn) {
-
+    this.CPU[nn]--
   }
   /**
    * SWAP n
@@ -476,7 +554,12 @@ export default class LR35902Instructions {
    *  C - Reset.
    */
   SWAP(n) {
-
+    this.CPU[n] = helper.swapNibles(this.CPU[n])
+    // Flags
+    if (this.CPU[n] === 0) this.CPU.z = 1
+    this.CPU.n = 0
+    this.CPU.h = 0
+    this.CPU.c = 0
   }
   /**
    * DAA
@@ -491,9 +574,7 @@ export default class LR35902Instructions {
    *  H - Reset.
    *  C - Set or reset according to operation.
    */
-  DAA() {
-
-  }
+  DAA() {}
   /**
    * CPL
    * Description:
@@ -505,7 +586,10 @@ export default class LR35902Instructions {
    *  C - Not affected.
    */
   CPL() {
-
+    this.CPU.A = ~this.CPU.A
+    //Flags
+    this.CPU.n = 1
+    this.CPU.h = 1
   }
   /**
    * CCF
@@ -519,9 +603,7 @@ export default class LR35902Instructions {
    *  H - Reset.
    *  C - Complemented.
    */
-  CCF() {
-
-  }
+  CCF() {}
   /**
    * SCF
    * Description:
@@ -533,16 +615,16 @@ export default class LR35902Instructions {
    *  C - Set.
    */
   SCF() {
-
+    this.CPU.n = 0
+    this.CPU.h = 0
+    this.CPU.c = 1
   }
   /**
    * NOP
    * Description:
    *  No operation.
    */
-  NOP() {
-
-  }
+  NOP() {}
   /**
    * HALT
    * Description:
@@ -550,7 +632,7 @@ export default class LR35902Instructions {
    *  when ever possible to reduce energy consumption.
    */
   HALT() {
-
+    this.CPU.HALT = 1
   }
   /**
    * STOP
@@ -558,7 +640,8 @@ export default class LR35902Instructions {
    *  Halt CPU & LCD display until button pressed.
    */
   STOP() {
-
+    this.CPU.HALT = 1
+    this.CPU.gpu.HALT = 1
   }
   /**
    * DI
@@ -567,10 +650,10 @@ export default class LR35902Instructions {
    *  immediately. Interrupts are disabled after
    *  instruction after DI is executed.
    * Flags affected:
-   *  None. 
+   *  None.
    */
   DI() {
-
+    // TODO: Delay disable interrupts
   }
   /**
    *  EI
@@ -582,7 +665,7 @@ export default class LR35902Instructions {
    *  None.
    */
   EI() {
-
+    // TODO: Delay enables interrupts
   }
   /**
    * Rotates and shifts
@@ -595,10 +678,16 @@ export default class LR35902Instructions {
    * Z - Set if result is zero.
    *  N - Reset.
    *  H - Reset.
-   *  C - Contains old bit 7 data. 
+   *  C - Contains old bit 7 data.
    */
   RLCA() {
-
+    const bit7 = this.CPU.A >> 7
+    this.CPU.A = this.CPU.A << 1
+    // Flags
+    if (this.CPU.A === 0) this.CPU.z = 0
+    this.CPU.n = 0
+    this.CPU.h = 0
+    this.CPU.c = bit7
   }
   /**
    *  RLA
@@ -610,9 +699,7 @@ export default class LR35902Instructions {
    *  H - Reset.
    *  C - Contains old bit 7 data.
    */
-  RLA() {
-
-  }
+  RLA() {}
   /**
    * RRCA
    * Description:
@@ -623,9 +710,7 @@ export default class LR35902Instructions {
    *  H - Reset.
    *  C - Contains old bit 0 data.
    */
-  RRCA() {
-
-  }
+  RRCA() {}
   /**
    * RRA
    * Description:
@@ -636,9 +721,7 @@ export default class LR35902Instructions {
    *  H - Reset.
    *  C - Contains old bit 0 data.
    */
-  RRA() {
-
-  }
+  RRA() {}
   /**
    * RLC n
    * Description:
@@ -651,9 +734,7 @@ export default class LR35902Instructions {
    *  H - Reset.
    *  C - Contains old bit 7 data.
    */
-  RLCn(n) {
-
-  }
+  RLCn(n) {}
   /**
    * RL n
    * Description:
@@ -666,9 +747,7 @@ export default class LR35902Instructions {
    *  H - Reset.
    *  C - Contains old bit 7 data.
    */
-  RLn(n) {
-
-  }
+  RLn(n) {}
   /**
    * RRC n
    * Description:
@@ -681,9 +760,7 @@ export default class LR35902Instructions {
    *  H - Reset.
    *  C - Contains old bit 0 data.
    */
-  RRCn(n) {
-
-  }
+  RRCn(n) {}
   /**
    * RR n
    * Description:
@@ -696,9 +773,7 @@ export default class LR35902Instructions {
    *  H - Reset.
    *  C - Contains old bit 0 data.
    */
-  RRn(n) {
-
-  }
+  RRn(n) {}
   /**
    *  SLA n
    * Description:
@@ -711,9 +786,7 @@ export default class LR35902Instructions {
    *  H - Reset.
    *  C - Contains old bit 7 data.
    */
-  SLAn(n) {
-
-  }
+  SLAn(n) {}
   /**
    * SRA n
    * Description:
@@ -724,11 +797,9 @@ export default class LR35902Instructions {
    *  Z - Set if result is zero.
    *  N - Reset.
    *  H - Reset.
-   *  C - Contains old bit 0 data. 
+   *  C - Contains old bit 0 data.
    */
-  SRAn(n) {
-
-  }
+  SRAn(n) {}
   /**
    * SRL n
    * Description:
@@ -741,9 +812,7 @@ export default class LR35902Instructions {
    *  H - Reset.
    *  C - Contains old bit 0 data.
    */
-  SRLn(n) {
-
-  }
+  SRLn(n) {}
   /**
    * Bit Opcodes
    */
@@ -760,9 +829,7 @@ export default class LR35902Instructions {
    *  H - Set.
    *  C - Not affected.
    */
-  BITbr(b, r) {
-
-  }
+  BITbr(b, r) {}
   /**
    * SET b,r
    * Description:
@@ -772,9 +839,7 @@ export default class LR35902Instructions {
    * Flags affected:
    *  None.
    */
-  SETbr(b, r) {
-
-  }
+  SETbr(b, r) {}
   /**
    * RES b,r
    * Description:
@@ -784,9 +849,7 @@ export default class LR35902Instructions {
    * Flags affected:
    *  None.
    */
-  RESbr(b, r) {
-
-  }
+  RESbr(b, r) {}
   /**
    * JP nn
    * Description:
@@ -794,9 +857,7 @@ export default class LR35902Instructions {
    * Use with:
    *  nn = two byte immediate value. (LS byte first.)
    */
-  JPnn() {
-
-  }
+  JPnn() {}
   /**
    * JP cc,nn
    * Description:
@@ -808,17 +869,13 @@ export default class LR35902Instructions {
    * Use with:
    *  nn = two byte immediate value. (LS byte first.)
    */
-  JPccnn() {
-
-  }
+  JPccnn() {}
   /**
    * JP (HL)
    * Description:
    *  Jump to address contained in HL.
    */
-  JPHL() {
-
-  }
+  JPHL() {}
   /**
    * JR n
    * Description:
@@ -826,9 +883,7 @@ export default class LR35902Instructions {
    * Use with:
    *  n = one byte signed immediate value
    */
-  JRn() {
-
-  }
+  JRn() {}
   /**
    * JR cc,n
    * Description:
@@ -841,9 +896,7 @@ export default class LR35902Instructions {
    *  cc = NC, Jump if C flag is reset.
    *  cc = C, Jump if C flag is set.
    */
-  JRccn(cc) {
-
-  }
+  JRccn(cc) {}
   /**
    * CALL nn
    * Description:
@@ -852,9 +905,7 @@ export default class LR35902Instructions {
    * Use with:
    *  nn = two byte immediate value. (LS byte first.)
    */
-  CALLnn() {
-
-  }
+  CALLnn() {}
   /**
    * CALL cc,nn
    * Description:
@@ -866,9 +917,7 @@ export default class LR35902Instructions {
    * Use with:
    *  nn = two byte immediate value. (LS byte first.)
    */
-  CALLccnn(cc) {
-
-  }
+  CALLccnn(cc) {}
   /**
    * RST n
    * Description:
@@ -877,9 +926,7 @@ export default class LR35902Instructions {
    * Use with:
    *  n = $00,$08,$10,$18,$20,$28,$30,$38
    */
-  RSTn() {
-
-  }
+  RSTn() {}
   /**
    * Returns
    */
@@ -888,9 +935,7 @@ export default class LR35902Instructions {
    * Description:
    *  Pop two bytes from stack & jump to that address.
    */
-  RET() {
-
-  }
+  RET() {}
   /**
    * RET cc
    * Description:
@@ -901,16 +946,12 @@ export default class LR35902Instructions {
    *  cc = NC, Return if C flag is reset.
    *  cc = C, Return if C flag is set.
    */
-  RETcc(cc) {
-
-  }
+  RETcc(cc) {}
   /**
    * RETI
    * Description:
    *  Pop two bytes from stack & jump to that address then
    *  enable interrupts.
    */
-  RETI() {
-
-  }
+  RETI() {}
 }

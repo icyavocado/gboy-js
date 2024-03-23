@@ -11,3 +11,4 @@ describe("Cartridge Loading", function() {
     assert.equal(cart.romSize, 0x0, "ROM size is not 32kb: 0x0 option");
   });
 });
+

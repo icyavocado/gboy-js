@@ -4,6 +4,8 @@
   "description": "JavaScript example starter project",
   "main": "index.html",
   "scripts": {
+    "test:watch": "mocha --watch",
+    "prettier": "prettier --write .",
     "start": "parcel index.html --open",
     "build": "parcel build index.html",
     "test": "mocha"

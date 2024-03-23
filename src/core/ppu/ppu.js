@@ -1,55 +1,48 @@
-const RAM8K = require("../ram/ram.js");
-
 export default class PictureProcessingUnit {
-  constructor(canvas) {
-    this._SCALE = 5;
-    this.width = 160;
-    this.height = 144;
-    this.PIXEL_SIZE = 1 * this._SCALE;
+  constructor(vram, width = 160, height = 144) {
+    this.width = width;
+    this.height = height;
 
-    this._canvasInit(canvas);
-    this._pixelsInit();
+    this._pixels = new Array(this.height * this.width).fill(0);
 
-    this.VRAM = new RAM8K();
-    this.shades = {
-      0x00: "#a9a9a9",
-      0x01: "#778899",
-      0x02: "#708090",
-      0x03: "#696969",
-    };
+    this.shades = ["⬛️", "🟦", "🟩", "🟧"];
+
+    this.vram = vram;
+
+    if (this.vram) this.populatePixels();
+
   }
-  draw() {
-    this.ctx.canvas.width = this.width * this._SCALE;
-    this.ctx.canvas.height = this.height * this._SCALE;
-    this.pixels.forEach((row, rowIndex) => {
-      row.forEach((column, colIndex) => {
-        const pixelColor = this.shades[this.pixels[rowIndex][colIndex]];
-        this.drawBorder(colIndex, rowIndex, "#8c8c8c", 1);
-        this.drawBorder(colIndex, rowIndex, pixelColor, 0);
-      });
+
+  text_out(print = false) {
+    let output = "";
+    const pixelLength = this._pixels.length;
+    this._pixels.forEach((pixel, index) => {
+      const nextLine = index % this.width;
+      if (index > 0 && index < pixelLength && nextLine == 0) output += "\n";
+      output += this.shades[pixel];
     });
+    return output;
   }
-  drawBorder(xPos, yPos, color, thickness = 0) {
-    const width = this.PIXEL_SIZE;
-    const height = this.PIXEL_SIZE;
-    this.ctx.fillStyle = color;
-    this.ctx.fillRect(
-      xPos * this.PIXEL_SIZE - thickness,
-      yPos * this.PIXEL_SIZE - thickness,
-      width + thickness * 2,
-      height + thickness * 2,
-    );
+
+  getPixelIndex(tileId, row, col) {
+    return col + row * this.width + tileId * 8;
   }
-  _pixelsInit() {
-    this.pixels = new Array(this.height)
-      .fill(0)
-      .map((row) => (row = new Array(this.width).fill(0)));
-  }
-  _canvasInit(canvas) {
-    // canvas init
-    this.canvas = canvas;
-    this.ctx = canvas.getContext("2d");
-    canvas.style.height = `${this.height * this._SCALE}px`;
-    canvas.style.width = `${this.width * this._SCALE}px`;
+
+  populatePixels() {
+    // 0x8000 - 0x87FF
+    // Block 1;
+    let memoryAddress = 0x8000;
+    for (let tileId = 0; tileId < 128; tileId++) {
+      for (let row = 0; row < 8; row++) {
+        let first_byte = this.vram.read(memoryAddress++);
+        let second_byte = this.vram.read(memoryAddress++);
+        for (let col = 0; col < 8; col++) {
+          let bit1 = (first_byte >> (7 - col)) & 1;
+          let bit2 = (second_byte >> (7 - col)) & 1;
+          let shade = (bit2 << 1) | bit1;
+          this._pixels[this.getPixelIndex(tileId, row, col)] = shade;
+        }
+      }
+    }
   }
 }

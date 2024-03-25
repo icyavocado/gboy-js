@@ -1,3 +1,6 @@
+const logger = require("../logger.js").default;
+const utils = require("../core/utils.js").default;
+
 const fs = require("fs");
 
 export default class Cartridge {
@@ -14,8 +17,11 @@ export default class Cartridge {
       for (let i = 0; i < buffer.length; i++) {
         this.data[i] = buffer[i];
       }
+
+      return true;
     } catch (err) {
       console.error(`Error loading rom: ${err}`);
+      return false;
     }
   }
 
@@ -52,7 +58,7 @@ export default class Cartridge {
   }
 
   get licenseeCode() {
-    return String.fromCharCode(this.data[0x144]) + String.fromCharCode(this.data[0x145]);
+    return (this.data[0x144]).toString(16) + (this.data[0x145]).toString(16);
   }
 
   get licenseeCodeDescription() {
@@ -128,7 +134,12 @@ export default class Cartridge {
   }
 
   get sgbFlagDescription() {
-    return this.sgbFlag === 0x03 ? "Game supports SGB functions" : "Game doesn't support SGB functions";
+    switch (this.sgbFlag) {
+      case 0x03:
+        return "Game supports SGB functions";
+      default:
+        return "Game doesn't support SGB functions";
+    }
   }
 
   get cartridgeType() {
@@ -228,30 +239,67 @@ export default class Cartridge {
     return this.data[0x14D];
   }
 
+  get checksumPassed() {
+    let checksum = 0;
+    for (let i = 0x134; i < 0x14D; i++) {
+      checksum = checksum - this.data[i] - 1;
+    }
+    console.log(utils);
+    checksum = utils.uint8_t(checksum);
+    logger.info(`Expected: ${this.headerChecksum} | Actual Calculation: ${checksum} | Passed: ${checksum === this.headerChecksum} `);
+    return checksum === this.headerChecksum;
+  }
+
   get globalChecksum() {
     return this.data[0x14E] + this.data[0x14F];
   }
 
   get content() {
-    console.log("Title: ", this.title);
-    console.log("Manufacturer Code: ", this.manufacturerCode);
-    console.log("CGB Flag: ", this.cgbFlag);
-    console.log("CGB Flag Description: ", this.cbgFlagDescription);
-    console.log("Licensee Code: ", this.licenseeCode);
-    console.log("Licensee Code Description: ", this.licenseeCodeDescription);
-    console.log("SGB Flag: ", this.sgbFlag);
-    console.log("SGB Flag Description: ", this.sgbFlagDescription);
-    console.log("Cartridge Type: ", this.cartridgeType);
-    console.log("Cartridge Type Description: ", this.cartridgeTypeDescription);
-    console.log("ROM Size: ", this.romSize);
-    console.log("ROM Size Description: ", this.romSizeDescription);
-    console.log("RAM Size: ", this.ramSize);
-    console.log("RAM Size Description: ", this.ramSizeDescription);
-    console.log("Destination Code: ", this.destinationCode);
-    console.log("Destination Code Description: ", this.destinationCodeDescription);
-    console.log("Old Licensee Code: ", this.oldLicenseeCode);
-    console.log("Mask ROM Version Number: ", this.maskRomVersionNumber);
-    console.log("Header Checksum: ", this.headerChecksum);
-    console.log("Global Checksum: ", this.globalChecksum);
+    console.log(`
+----Cartridge Information----
+
+    Title: ${this.title} \n
+    Manufacturer Code: ${this.manufacturerCode}
+
+    CGB Flag: ${this.cgbFlag}
+    CGB Flag Description: ${this.cbgFlagDescription}
+
+    Licensee Code: ${this.licenseeCode}
+    Licensee Code Description: ${this.licenseeCodeDescription}
+
+    SGB Flag: ${this.sgbFlag}
+    SGB Flag Description: ${this.sgbFlagDescription}
+
+    Cartridge Type: ${this.cartridgeType}
+    Cartridge Type Description: ${this.cartridgeTypeDescription}
+
+    ROM Size: ${this.romSize}
+    ROM Size Description: ${this.romSizeDescription}
+
+    RAM Size: ${this.ramSize}
+    RAM Size Description: ${this.ramSizeDescription}
+
+    Destination Code: ${this.destinationCode}
+    Destination Code Description: ${this.destinationCodeDescription}
+
+    Old Licensee Code: ${this.oldLicenseeCode}
+
+    Mask ROM Version Number: ${this.maskRomVersionNumber}
+
+    Header Checksum: ${this.headerChecksum}
+    Global Checksum: ${this.globalChecksum}
+
+------------------------------- `);
+  }
+
+  read(addr) {
+    // Support ROM ONLY
+    return utils.uint8_t(this.data[addr]);
+  }
+
+  write(addr, value) {
+    // Support ROM ONLY
+    logger.error(`Writing to ROM not supported`);
+    this.data[addr] = utils.uint8_t(value);
   }
 }

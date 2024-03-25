@@ -1,49 +1,68 @@
-/**
- * Z80 Chip Documentationa
- * http://datasheets.chipdb.org/Zilog/Z80/z80-documented-0.90.pdf
- */
-
-import LR35902Instructions from "./lr35902.instructions";
-import LR35902OpCodes from "./lr35902.opcodes";
+const logger = require("../../logger.js").default;
 
 export default class LR35902 {
-  constructor(memory) {
-    this.CLOCK = 4.194304;
+  constructor() {
+    this._a;
+    this._f;
+    this._b;
+    this._c;
+    this._d;
+    this._e;
+    this._h;
+    this._l;
 
-    // RAM
-    this.ram = memory;
+    this._pc;
+    this._sp;
 
-    // Cycles
-    this.cycles = 0x00;
+    this.regs = {
+      a: this._a,
+      f: this._f,
+      b: this._b,
+      c: this._c,
+      d: this._d,
+      e: this._e,
+      h: this._h,
+      l: this._l,
+      pc: this._pc,
+      sp: this._sp
+    }
 
-    // Registers
-    this.r8 = new Uint8Array([0, 0, 0, 0, 0, 0, 0, 0]);
-    this.r16 = new Uint16Array([0]);
-    this.A = random(0, 255);
-    this.B = random(0, 255);
-    this.C = random(0, 255);
-    this.D = random(0, 255);
-    this.E = random(0, 255);
-    this.H = random(0, 255);
-    this.L = random(0, 255);
+    this.cur_opcode;
 
-    // Flag Registers
-    this.z = 0x00;
-    this.n = 0x00;
-    this.h = 0x00;
-    this.c = 0x00;
+    this.cur_instr;
+    this.mem_dest;
+    this.halted = false;
+    this.stepping = false;
+  }
 
-    // Program Counter
-    this.pc = 0;
+  get a() { return this._a }
+  set a(value) { this._a = utils.uint8_t(value); }
+  get f() { return this._f; }
+  set f(value) { this._f = utils.uint8_t(value); }
+  get b() { return this._b; }
+  set b(value) { this._b = utils.uint8_t(value); }
+  get c() { return this._c; }
+  set c(value) { this._c = utils.uint8_t(value); }
+  get d() { return this._d; }
+  set d(value) { this._d = utils.uint8_t(value); }
+  get e() { return this._e; }
+  set e(value) { this._e = utils.uint8_t(value); }
+  get h() { return this._h; }
+  set h(value) { this._h = utils.uint8_t(value); }
+  get l() { return this._l; }
+  set l(value) { this._l = utils.uint8_t(value); }
 
-    // Stack Pointer
-    this.sp = 0xfffe; // Init at 0xFFFE
+  get pc() { return this._pc; }
+  set pc(value) { this._pc = utils.uint16_t(value); }
+  get sp() { return this._sp; }
+  set sp(value) { this._sp = utils.uint16_t(value); }
 
-    // Instruction
-    this.ins = new LR35902Instructions(this, this.RAM);
-    this.OP_CODES = new LR35902OpCodes(this.ins);
+  init() {
 
-    // Halt
-    this._halt = 0;
+  }
+
+  get step() {
+    logger.info("CPU not yet implemented");
+    return false;
   }
 }

@@ -1,4 +1,4 @@
-export default class PictureProcessingUnit {
+export default class Timer {
   constructor() { }
 
   init() { }

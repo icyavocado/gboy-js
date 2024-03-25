@@ -9,6 +9,8 @@ describe("Cartridge Loading", function() {
     assert.equal(cart.title, 'TETRIS000000000', "Title is not TETRIS000000000");
     assert.equal(cart.manufacturerCode, '\x00\x00\x00\x00', "Manufacturer code is not 0x00000000");
     assert.equal(cart.romSize, 0x0, "ROM size is not 32kb: 0x0 option");
+    assert.equal(cart.checksumPassed, true, "Checksum failed");
+    cart.content
   });
 });
 

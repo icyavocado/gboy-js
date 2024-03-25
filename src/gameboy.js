@@ -1,27 +1,54 @@
-import LR35902 from "./core/lr35902/lr35902.cpu";
-import PictureProcessingUnit from "./core/ppu/ppu";
-import RAM from "./core/ram/ram";
+const logger = require("./logger.js").default;
+const LR35902 = require("./core/lr35902/lr35902.cpu.js").default;
+const Cartridge = require("./core/cartridge.js").default;
+const utils = require("./core/utils.js");
 
-export default class Gameboy {
-  constructor(canvas) {
-    this.memory = new RAM();
-    this.DMG_CPU = new LR35902(this.memory);
-    this.PPU = new PictureProcessingUnit(canvas);
+export default class GameBoy {
+  constructor() {
+    this.paused = false;
+    this.running = false;
+    this.ticks = 0;
+
+    this.cpu = new LR35902();
   }
-  start() {
-    while (!this.DMG_CPU.halt) {
-      const op = this.fetchOp();
-      const op_func = this.decode(op);
-      this.execute(op_func);
+
+  async run(romPath) {
+    if (!romPath) {
+      logger.error("No ROM path provided");
+      return -1;
     }
-  }
-  fetchOp() {
-    return this.memory.read(this.DMG_CPU.pc++);
-  }
-  decode(op) {
-    return this.DMG_CPU.OP_CODES.ops[op];
-  }
-  execute(op_func) {
-    op_func();
+
+    const cartridge = new Cartridge();
+    if (!cartridge.load(romPath)) {
+      logger.error("Error loading ROM");
+      return -2;
+    }
+
+    logger.info(`Title: ${cartridge.title}`);
+    logger.info(`Manufacturer Code: ${cartridge.manufacturerCode}`);
+    logger.info("GameBoy is running...");
+
+    this.cpu.init();
+
+    this.running = true;
+    this.paused = false;
+    this.ticks = 0;
+
+    while (this.running) {
+      if (this.paused) {
+        await utils.sleep(10000);
+        continue;
+      }
+
+      logger.info(this.cpu.step);
+
+      if (!this.cpu.step) {
+        logger.info("CPU Stopped");
+        return -3;
+      }
+
+      this.ticks++;
+    }
+    return 0;
   }
 }

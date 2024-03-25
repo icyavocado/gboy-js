@@ -1,957 +1,392 @@
-import helper from "./lr35902.helper";
+const logger = require("../logger.js").default;
+const utils = require("./utils.js").default;
+
 export default class LR35902Instructions {
-  constructor(cpu, memory) {
-    this.CPU = cpu;
-    this.m = memory;
-  }
-  /**
-   * 8-bit Load (LD) instructions
-   */
-
-  /**
-   * Description:
-   *  Put value nn into n.
-   * Use with:
-   *  nn = B,C,D,E,H,L,BC,DE,HL,SP
-   *  n = 8 bit immediate value
-   */
-  LDnnn(rr) {
-    this.write(this.CPU._n, this.CPU[rr]);
+  constructor(type, mode, reg1, reg2, cond, param) {
+    this._type = type;
+    this._mode = mode;
+    this._reg1 = reg1;
+    this._reg2 = reg2;
+    this._cond = cond;
+    this._param = param;
   }
 
-  /**
-   * Description:
-   *  Put value r2 into r1.
-   * Use with:
-   *  r1,r2 = A,B,C,D,E,H,L,(HL)
-   */
-  LDr1r2(r1, r2) {
-    this.CPU[r1] = this.CPU[r2];
-  }
-
-  /**
-   * Description:
-   *  Put value n into A
-   * Use with:
-   *  n = A,B,C,D,E,H,L,(BC),(DE),(HL),(nn),#
-   *  nn = two byte immediate value. (LS byte first.)
-   */
-  LDAn(n) {
-    let value = 0;
-    switch (n) {
-      case "#":
-        value = this.CPU._n;
-        break;
-      case "nn":
-        value = this.CPU._nn;
-        break;
-      default:
-        value = this.CPU[n];
+  set type(value) {
+    const mode = {
+      "AM_IMP": 1,
+      "AM_R_D16": 1,
+      "AM_R_R": 1,
+      "AM_MR_R": 1,
+      "AM_R": 1,
+      "AM_R_D8": 1,
+      "AM_R_MR": 1,
+      "AM_R_HLI": 1,
+      "AM_R_HLD": 1,
+      "AM_HLI_R": 1,
+      "AM_HLD_R": 1,
+      "AM_R_A8": 1,
+      "AM_A8_R": 1,
+      "AM_HL_SPR": 1,
+      "AM_D16": 1,
+      "AM_D8": 1,
+      "AM_D16_R": 1,
+      "AM_MR_D8": 1,
+      "AM_MR": 1,
+      "AM_A16_R": 1,
+      "AM_R_A16": 1
+    };
+    if (!mode[value]) {
+      logger.error(`Invalid type: ${value}`);
+      return;
     }
-    this.CPU.A = value;
+    this._type = value;
   }
-  /**
-   * Description:
-   *  Put value A into n.
-   * Use with:
-   *  n = A,B,C,D,E,H,L,(BC),(DE),(HL),(nn)
-   *  nn = two byte immediate value. (LS byte first.)
-   */
-  LDnA(n) {
-    switch (n) {
-      case "nn":
-        this.write(this.CPU._nn, this.CPU.A);
-        break;
-      default:
-        this.CPU[n] = this.CPU.A;
+
+  get type() {
+    return this._type;
+  }
+
+  get reg_type() {
+    return {
+      "RT_NONE": 1,
+      "RT_A": 1,
+      "RT_F": 1,
+      "RT_B": 1,
+      "RT_C": 1,
+      "RT_D": 1,
+      "RT_E": 1,
+      "RT_H": 1,
+      "RT_L": 1,
+      "RT_AF": 1,
+      "RT_BC": 1,
+      "RT_DE": 1,
+      "RT_HL": 1,
+      "RT_SP": 1,
+      "RT_PC": 1
     }
   }
-  /**
-   * Description:
-   * Put value at address $FF00 + register C into A.
-   * Same as: LD A,($FF00+C)
-   */
-  LDAC() {
-    this.CPU.A = this.read(new Uint16Array([0xff + this.CPU.C])[0]);
-  }
-  /**
-   * Description:
-   * Put A into address $FF00 + register C.
-   */
-  LDCA() {
-    this.write(new Uint16Array([0xff + this.CPU.C])[0], this.CPU.A);
-  }
-  /**
-   * LD A,(HLD)
-   *  Description: Same as: LDD A,(HL)
-   */
-  /**
-   * LD A,(HL-)
-   *  Description: Same as: LDD A,(HL)
-   */
-  /**
-   * LDD A,(HL)
-   *  Description:
-   *    Put value at address HL into A. Decrement HL.
-   *    Same as: LD A,(HL) - DEC HL
-   */
-  LDDAHL() {
-    this.CPU.A = this.read(this.CPU.HL);
-    this.CPU.HL--;
-  }
-  /**
-   * LD (HLD),A
-   *  Description: Same as: LDD (HL),A
-   */
-  /**
-   * LD (HL-),A
-   *  Description: Same as: LDD (HL),A
-   */
-  /**
-   * LDD (HL),A
-   *  Description:
-   *    Put A into memory address HL. Decrement HL.
-   *    Same as: LD (HL),A - DEC HL
-   */
-  LDDHLA() {
-    this.write(this.CPU.HL, this.CPU.A);
-    this.CPU.HL--;
-  }
-  /**
-   * LD A,(HLI)
-   *  Description: Same as: LDI A,(HL)
-   */
-  /**
-   * LD A,(HL+)
-   *  Description: Same as: LDI A,(HL)
-   */
-  /**
-   * LDI A,(HL)
-   *  Description:
-   *    Put value at address HL into A. Increment HL.
-   *    Same as: LD A,(HL) - INC HL
-   */
-  LDIAHL() {
-    this.CPU.A = this.read(this.CPU.HL);
-    this.CPU.HL++;
-  }
-  /**
-   * LD (HLI),A
-   *  Description: Same as: LDI (HL),A
-   */
-  /**
-   * LD (HL+),A
-   *  Description: Same as: LDI (HL),A
-   */
-  /**
-   * LDI (HL),A
-   *  Description:
-   *    Put A into memory address HL. Increment HL.
-   *    Same as: LD (HL),A - INC HL
-   */
-  LDIHLA() {
-    this.write(this.CPU.HL, this.CPU.A);
-    this.CPU.HL++;
-  }
-  /**
-   * LDH (n),A
-   *  Description:
-   *    Put A into memory address $FF00+n.
-   *  Use with:
-   *    n = one byte immediate value.
-   */
-  LDHnA() {
-    this.write(new Uint16Array([0xff00 + this.CPU._n])[0], this.CPU.A);
-  }
-  /**
-   * LDH A,(n)
-   *  Description:
-   *    Put memory address $FF00+n into A.
-   *  Use with:
-   *    n = one byte immediate value.
-   */
-  LDHAn() {
-    this.CPU.A = this.read(new Uint16Array([0xff00 + this.CPU._n])[0]);
-  }
-  /**
-   * 16-bit Loads (LD) instructions
-   */
-  /**
-   * LD n,nn
-   *   Description:
-   *     Put value nn into n.
-   *   Use with:
-   *     n = BC,DE,HL,SP
-   *     nn = 16 bit immediate value
-   */
-  LDnnn_16(n) {
-    this.CPU[n] = this.CPU._nn;
-  }
-  /**
-   * LD SP,HL
-   *   Description:
-   *    Put HL into Stack Pointer (SP).
-   */
-  LDSPHL() {
-    this.CPU.SP = this.CPU.HL;
-  }
-  /**
-   * LD HL,SP+n
-   *  Description: Same as: LDHL SP,n.
-   */
-  /**
-   * LDHL SP,n
-   *  Description:
-   *    Put SP + n effective address into HL.
-   *  Use with:
-   *    n = one byte signed immediate value.
-   *  Flags affected:
-   *    Z - Reset.
-   *    N - Reset.
-   *    H - Set or reset according to operation.
-   *    C - Set or reset according to operation.
-   */
-  LDHLSPn() {
-    this.CPU.HL = new Uint16Array([this.CPU.SP + this.CPU._n_signed])[0];
-    this.CPU.z = 0;
-    this.CPU.n = 0;
-  }
-  /**
-   * LD (nn),SP
-   *  Description:
-   *    Put Stack Pointer (SP) at address n.
-   *  Use with:
-   *    nn = two byte immediate address.
-   */
-  LDnnSP() {
-    this.write(this.CPU._nn, this.CPU.SP);
-  }
-  /**
-   * PUSH nn
-   *  Description:
-   *    Push register pair nn onto stack.
-   *    Decrement Stack Pointer (SP) twice.
-   *  Use with:
-   *    nn = AF,BC,DE,HL
-   */
-  PUSHnn(nn) {
-    this.CPU[nn[0]] = this.read(this.CPU.SP);
-    this.CPU.SP--;
-    this.CPU[nn[1]] = this.read(this.CPU.SP);
-    this.CPU.SP--;
-  }
-  /**
-   * POP nn
-   * Description:
-   * Pop two bytes off stack into register pair nn.
-   * Increment Stack Pointer (SP) twice.
-   * Use with:
-   * nn = AF,BC,DE,H
-   */
-  POPnn(nn) {
-    this.CPU[nn[0]] = this.read(this.CPU.SP);
-    this.CPU.SP++;
-    this.CPU[nn[1]] = this.read(this.CPU.SP);
-    this.CPU.SP++;
-  }
-  /**
-   * 8-BIT ALU
-   */
 
-  /**
-   * ADD n
-   * Description:
-   *  Add n to A.
-   * Use with:
-   *  n = A,B,C,D,E,H,L,(HL),#
-   * Flags affected:
-   *  Z - Set if result is zero.
-   *  N - Reset.
-   *  H - Set if carry from bit 3.
-   *  C - Set if carry from bit 7
-   */
-  ADD(n) {
-    const r2 = n != "#" ? this.CPU[n] : this.CPU._n;
-    const r1 = this.CPU.A * 1;
-    this.CPU.A += r2;
-    // Flags
-    if (this.CPU.A === 0) this.CPU.z = 1;
-    this.CPU.n = 0;
-    if (helper.isHalfCarry(r1, r2)) this.CPU.h = 1;
-    if (helper.isCarry(r1, r2)) this.CPU.c = 1;
+  get reg1() {
+    return this._reg1;
   }
-  /**
-   * ADC n
-   * Description:
-   *  Add n + Carry flag to A.
-   * Use with:
-   *  n = A,B,C,D,E,H,L,(HL),#
-   * Flags affected:
-   *  Z - Set if result is zero.
-   *  N - Reset.
-   *  H - Set if carry from bit 3.
-   *  C - Set if carry from bit 7.
-   */
-  ADC(n) {
-    let r2 = n != "#" ? this.CPU[n] : this.CPU._n;
-    r2 += this.CPU.h;
-    const r1 = this.CPU.A * 1;
-    this.CPU.A += r2;
-    // Flags
-    if (this.CPU.A === 0) this.CPU.z = 1;
-    this.CPU.n = 0;
-    if (helper.isHalfCarry(r1, r2)) this.CPU.h = 1;
-    if (helper.isCarry(r1, r2)) this.CPU.c = 1;
-  }
-  /**
-   * SUB n
-   * Description:
-   *  Subtract n from A.
-   * Use with:
-   *  n = A,B,C,D,E,H,L,(HL),#
-   * Flags affected:
-   *  Z - Set if result is zero.
-   *  N - Set.
-   *  H - Set if no borrow from bit 4.
-   *  C - Set if no borrow.
-   */
-  SUB(n) {
-    let r2 = n != "#" ? this.CPU[n] : this.CPU._n;
-    const r1 = this.CPU.A * 1;
-    this.CPU.A -= r2;
-    // Flags
-    if (this.CPU.A === 0) this.CPU.z = 1;
-    this.CPU.n = 1;
-    if (!helper.isHalfBorrow(r1, r2)) this.CPU.h = 1;
-    if (!helper.isBorrow(r1, r2)) this.CPU.c = 1;
-  }
-  /**
-   * SBC n
-   * Description:
-   *  Subtract n + Carry flag from A.
-   * Use with:
-   *  n = A,B,C,D,E,H,L,(HL),#
-   * Flags affected:
-   *  Z - Set if result is zero.
-   *  N - Set.
-   *  H - Set if no borrow from bit 4.
-   *  C - Set if no borrow.
-   */
-  SBC(n) {
-    let r2 = n != "#" ? this.CPU[n] : this.CPU._n;
-    r2 += this.CPU.h;
-    const r1 = this.CPU.A * 1;
-    this.CPU.A -= r2;
-    // Flags
-    if (this.CPU.A === 0) this.CPU.z = 1;
-    this.CPU.n = 1;
-    if (!helper.isHalfBorrow(r1, r2)) this.CPU.h = 1;
-    if (!helper.isBorrow(r1, r2)) this.CPU.c = 1;
-  }
-  /**
-   * AND n
-   * Description:
-   *  Logically AND n with A, result in A.
-   * Use with:
-   *  n = A,B,C,D,E,H,L,(HL),#
-   * Flags affected:
-   *  Z - Set if result is zero.
-   *  N - Reset.
-   *  H - Set.
-   *  C - Reset.
-   */
-  AND(n) {
-    let r2 = n != "#" ? this.CPU[n] : this.CPU._n;
-    this.CPU.A &= r2;
-    // Flags
-    if (this.CPU.A === 0) this.CPU.z = 1;
-    this.CPU.n = 1;
-    this.CPU.h = 1;
-    this.CPU.c = 0;
-  }
-  /**
-   * OR n
-   * Description:
-   *  Logical OR n with register A, result in A.
-   * Use with:
-   *  n = A,B,C,D,E,H,L,(HL),#
-   * Flags affected:
-   *  Z - Set if result is zero.
-   *  N - Reset.
-   *  H - Reset.
-   *  C - Reset.
-   */
-  OR(n) {
-    let r2 = n != "#" ? this.CPU[n] : this.CPU._n;
-    this.CPU.A |= r2;
-    // Flags
-    if (this.CPU.A === 0) this.CPU.z = 1;
-    this.CPU.n = 0;
-    this.CPU.h = 0;
-    this.CPU.c = 0;
-  }
-  /**
-   * XOR n
-   * Description:
-   *  Logical exclusive OR n with register A, result in A.
-   * Use with:
-   *  n = A,B,C,D,E,H,L,(HL),#
-   * Flags affected:
-   *  Z - Set if result is zero.
-   *  N - Reset.
-   *  H - Reset.
-   *  C - Reset.
-   */
-  XOR(n) {
-    let r2 = n != "#" ? this.CPU[n] : this.CPU._n;
-    this.CPU.A ^= r2;
-    // Flags
-    if (this.CPU.A === 0) this.CPU.z = 1;
-    this.CPU.n = 0;
-    this.CPU.h = 0;
-    this.CPU.c = 0;
-  }
-  /**
-   * CP n
-   * Description:
-   *  Compare A with n. This is basically an A - n
-   *  subtraction instruction but the results are thrown
-   *  away.
-   * Use with:
-   *  n = A,B,C,D,E,H,L,(HL),#
-   * Flags affected:
-   *  Z - Set if result is zero. (Set if A = n.)
-   *  N - Set.
-   *  H - Set if no borrow from bit 4.
-   *  C - Set for no borrow. (Set if A < n.)
-   */
-  CP(n) {
-    let r2 = n != "#" ? this.CPU[n] : this.CPU._n;
-    // Flags
-    if (this.CPU.A === r2) this.CPU.z = 1;
-    this.CPU.n = 1;
-    if (!helper.isHalfBorrow(this.CPU.A, r2)) this.CPU.h = 1;
-    // if (!helper.isBorrow(this.CPU.A, r2)) this.c = 1;
-    if (this.CPU.A < r2) this.CPU.c = 1;
-  }
-  /**
-   * INC n
-   * Description:
-   *  Increment register n.
-   * Use with:
-   *  n = A,B,C,D,E,H,L,(HL)
-   * Flags affected:
-   *  Z - Set if result is zero.
-   *  N - Reset.
-   *  H - Set if carry from bit 3.
-   *  C - Not affected.
-   */
-  INC(n) {
-    this.CPU[n]++;
-    // Flags
-    if (this.CPU[n] === 0) this.CPU.z = 1;
-    this.CPU.n = 0;
-    if (helper.isHalfCarry(this.CPU[n], 1)) this.CPU.h = 1;
-  }
-  /**
-   * DEC n
-   * Description:
-   *  Decrement register n.
-   * Use with:
-   *  n = A,B,C,D,E,H,L,(HL)
-   * Flags affected:
-   *  Z - Set if reselt is zero.
-   *  N - Set.
-   *  H - Set if no borrow from bit 4.
-   *  C - Not affected.
-   */
-  DEC(n) {
-    this.CPU[n]--;
-    // Flags
-    if (this.CPU[n] === 0) this.CPU.z = 1;
-    this.CPU.n = 1;
-    if (helper.isHalfBorrow(this.CPU[n], 1)) this.CPU.h = 1;
-  }
-  /**
-   * 16-Bit Arithmetic
-   */
 
-  /**
-   * ADD HL,n
-   * Description:
-   *  Add n to HL.
-   * Use with:
-   *  n = BC,DE,HL,SP
-   * Flags affected:
-   *  Z - Not affected.
-   *  N - Reset.
-   *  H - Set if carry from bit 11.
-   *  C - Set if carry from bit 15.
-   */
-  ADDHLn(n) {
-    const r2 = this.CPU[n];
-    const r1 = this.CPU.HL * 1;
-    this.CPU.HL += r2;
-    // Flags
-    this.CPU.n = 0;
-    if (this.isHalfCarry(r1, r2)) this.CPU.h = 1;
-    if (this.isCarry(r1, r2)) this.CPU.c = 1;
+  set reg1(value) {
+    if (!this.reg_type[value]) {
+      logger.error(`Invalid register 1: ${value}`);
+      return;
+    }
+    this._reg1 = value;
   }
-  /**
-   * ADD SP,n
-   * Description:
-   *  Add n to Stack Pointer (SP).
-   * Use with:
-   *  n = one byte signed immediate value (#).
-   * Flags affected:
-   *  Z - Reset.
-   *  N - Reset.
-   *  H - Set or reset according to operation.
-   *  C - Set or reset according to operation.
-   */
-  ADDSPn() {
-    const n = this.CPU._n;
-    this.CPU.SP += n;
-    // Flags
-    this.CPU.z = 0;
-    this.CPU.n = 0;
-    // TODO: H and C flags
-  }
-  /**
-   * INC nn
-   * Description:
-   *  Increment register nn.
-   * Use with:
-   *  nn = BC,DE,HL,SP
-   * Flags affected:
-   *  None.
-   */
-  INCnn(nn) {
-    this.CPU[nn]++;
-  }
-  /**
-   * DEC nn
-   * Description:
-   *  Decrement register nn.
-   * Use with:
-   *  nn = BC,DE,HL,SP
-   * Flags affected:
-   *  None.
-   */
-  DECnn(nn) {
-    this.CPU[nn]--;
-  }
-  /**
-   * SWAP n
-   * Description:
-   *  Swap upper & lower nibles of n.
-   * Use with:
-   *  n = A,B,C,D,E,H,L,(HL)
-   * Flags affected:
-   *  Z - Set if result is zero.
-   *  N - Reset.
-   *  H - Reset.
-   *  C - Reset.
-   */
-  SWAP(n) {
-    this.CPU[n] = helper.swapNibles(this.CPU[n]);
-    // Flags
-    if (this.CPU[n] === 0) this.CPU.z = 1;
-    this.CPU.n = 0;
-    this.CPU.h = 0;
-    this.CPU.c = 0;
-  }
-  /**
-   * DAA
-   * Description:
-   *  Decimal adjust register A.
-   *  This instruction adjusts register A so that the
-   *  correct representation of Binary Coded Decimal (BCD)
-   *  is obtained.
-   * Flags affected:
-   *  Z - Set if register A is zero.
-   *  N - Not affected.
-   *  H - Reset.
-   *  C - Set or reset according to operation.
-   */
-  DAA() {}
-  /**
-   * CPL
-   * Description:
-   *  Complement A register. (Flip all bits.)
-   * Flags affected:
-   *  Z - Not affected.
-   *  N - Set.
-   *  H - Set.
-   *  C - Not affected.
-   */
-  CPL() {
-    this.CPU.A = ~this.CPU.A;
-    //Flags
-    this.CPU.n = 1;
-    this.CPU.h = 1;
-  }
-  /**
-   * CCF
-   * Description:
-   *  Complement carry flag.
-   *  If C flag is set, then reset it.
-   *  If C flag is reset, then set it.
-   * Flags affected:
-   *  Z - Not affected.
-   *  N - Reset.
-   *  H - Reset.
-   *  C - Complemented.
-   */
-  CCF() {}
-  /**
-   * SCF
-   * Description:
-   *  Set Carry flag.
-   * Flags affected:
-   *  Z - Not affected.
-   *  N - Reset.
-   *  H - Reset.
-   *  C - Set.
-   */
-  SCF() {
-    this.CPU.n = 0;
-    this.CPU.h = 0;
-    this.CPU.c = 1;
-  }
-  /**
-   * NOP
-   * Description:
-   *  No operation.
-   */
-  NOP() {}
-  /**
-   * HALT
-   * Description:
-   *  Power down CPU until an interrupt occurs. Use this
-   *  when ever possible to reduce energy consumption.
-   */
-  HALT() {
-    this.CPU.HALT = 1;
-  }
-  /**
-   * STOP
-   * Description:
-   *  Halt CPU & LCD display until button pressed.
-   */
-  STOP() {
-    this.CPU.HALT = 1;
-    this.CPU.gpu.HALT = 1;
-  }
-  /**
-   * DI
-   * Description:
-   *  This instruction disables interrupts but not
-   *  immediately. Interrupts are disabled after
-   *  instruction after DI is executed.
-   * Flags affected:
-   *  None.
-   */
-  DI() {
-    // TODO: Delay disable interrupts
-  }
-  /**
-   *  EI
-   * Description:
-   *  Enable interrupts. This intruction enables interrupts
-   *  but not immediately. Interrupts are enabled after
-   *  instruction after EI is executed.
-   * Flags affected:
-   *  None.
-   */
-  EI() {
-    // TODO: Delay enables interrupts
-  }
-  /**
-   * Rotates and shifts
-   */
-  /**
-   * RLCA
-   * Description:
-   *  Rotate A left. Old bit 7 to Carry flag.
-   * Flags affected:
-   * Z - Set if result is zero.
-   *  N - Reset.
-   *  H - Reset.
-   *  C - Contains old bit 7 data.
-   */
-  RLCA() {
-    const bit7 = this.CPU.A >> 7;
-    this.CPU.A = this.CPU.A << 1;
-    // Flags
-    if (this.CPU.A === 0) this.CPU.z = 0;
-    this.CPU.n = 0;
-    this.CPU.h = 0;
-    this.CPU.c = bit7;
-  }
-  /**
-   *  RLA
-   * Description:
-   *  Rotate A left through Carry flag.
-   * Flags affected:
-   *  Z - Set if result is zero.
-   *  N - Reset.
-   *  H - Reset.
-   *  C - Contains old bit 7 data.
-   */
-  RLA() {}
-  /**
-   * RRCA
-   * Description:
-   *  Rotate A right. Old bit 0 to Carry flag.
-   * Flags affected:
-   *  Z - Set if result is zero.
-   *  N - Reset.
-   *  H - Reset.
-   *  C - Contains old bit 0 data.
-   */
-  RRCA() {}
-  /**
-   * RRA
-   * Description:
-   *  Rotate A right through Carry flag.
-   * Flags affected:
-   *  Z - Set if result is zero.
-   *  N - Reset.
-   *  H - Reset.
-   *  C - Contains old bit 0 data.
-   */
-  RRA() {}
-  /**
-   * RLC n
-   * Description:
-   *  Rotate n left. Old bit 7 to Carry flag.
-   * Use with:
-   *  n = A,B,C,D,E,H,L,(HL)
-   * Flags affected:
-   * Z - Set if result is zero.
-   *  N - Reset.
-   *  H - Reset.
-   *  C - Contains old bit 7 data.
-   */
-  RLCn(n) {}
-  /**
-   * RL n
-   * Description:
-   *  Rotate n left through Carry flag.
-   * Use with:
-   *  n = A,B,C,D,E,H,L,(HL)
-   * Flags affected:
-   *  Z - Set if result is zero.
-   *  N - Reset.
-   *  H - Reset.
-   *  C - Contains old bit 7 data.
-   */
-  RLn(n) {}
-  /**
-   * RRC n
-   * Description:
-   *  Rotate n right. Old bit 0 to Carry flag.
-   * Use with:
-   * n = A,B,C,D,E,H,L,(HL)
-   * Flags affected:
-   *  Z - Set if result is zero.
-   *  N - Reset.
-   *  H - Reset.
-   *  C - Contains old bit 0 data.
-   */
-  RRCn(n) {}
-  /**
-   * RR n
-   * Description:
-   *  Rotate n right through Carry flag.
-   * Use with:
-   *  n = A,B,C,D,E,H,L,(HL)
-   * Flags affected:
-   *  Z - Set if result is zero.
-   *  N - Reset.
-   *  H - Reset.
-   *  C - Contains old bit 0 data.
-   */
-  RRn(n) {}
-  /**
-   *  SLA n
-   * Description:
-   *  Shift n left into Carry. LSB of n set to 0.
-   * Use with:
-   *  n = A,B,C,D,E,H,L,(HL)
-   * Flags affected:
-   *  Z - Set if result is zero.
-   *  N - Reset.
-   *  H - Reset.
-   *  C - Contains old bit 7 data.
-   */
-  SLAn(n) {}
-  /**
-   * SRA n
-   * Description:
-   *  Shift n right into Carry. MSB doesn't change.
-   * Use with:
-   *  n = A,B,C,D,E,H,L,(HL)
-   * Flags affected:
-   *  Z - Set if result is zero.
-   *  N - Reset.
-   *  H - Reset.
-   *  C - Contains old bit 0 data.
-   */
-  SRAn(n) {}
-  /**
-   * SRL n
-   * Description:
-   *  Shift n right into Carry. MSB set to 0.
-   * Use with:
-   *  n = A,B,C,D,E,H,L,(HL)
-   * Flags affected:
-   *  Z - Set if result is zero.
-   *  N - Reset.
-   *  H - Reset.
-   *  C - Contains old bit 0 data.
-   */
-  SRLn(n) {}
-  /**
-   * Bit Opcodes
-   */
 
-  /**
-   * BIT b,r
-   * Description:
-   *  Test bit b in register r.
-   * Use with:
-   *  b = 0 - 7, r = A,B,C,D,E,H,L,(HL)
-   * Flags affected:
-   *  Z - Set if bit b of register r is 0.
-   *  N - Reset.
-   *  H - Set.
-   *  C - Not affected.
-   */
-  BITbr(b, r) {}
-  /**
-   * SET b,r
-   * Description:
-   *  Set bit b in register r.
-   * Use with:
-   *  b = 0 - 7, r = A,B,C,D,E,H,L,(HL)
-   * Flags affected:
-   *  None.
-   */
-  SETbr(b, r) {}
-  /**
-   * RES b,r
-   * Description:
-   *  Reset bit b in register r.
-   * Use with:
-   *  b = 0 - 7, r = A,B,C,D,E,H,L,(HL)
-   * Flags affected:
-   *  None.
-   */
-  RESbr(b, r) {}
-  /**
-   * JP nn
-   * Description:
-   *  Jump to address nn.
-   * Use with:
-   *  nn = two byte immediate value. (LS byte first.)
-   */
-  JPnn() {}
-  /**
-   * JP cc,nn
-   * Description:
-   *  Jump to address n if following condition is true:
-   *  cc = NZ, Jump if Z flag is reset.
-   *  cc = Z, Jump if Z flag is set.
-   *  cc = NC, Jump if C flag is reset.
-   *  cc = C, Jump if C flag is set.
-   * Use with:
-   *  nn = two byte immediate value. (LS byte first.)
-   */
-  JPccnn() {}
-  /**
-   * JP (HL)
-   * Description:
-   *  Jump to address contained in HL.
-   */
-  JPHL() {}
-  /**
-   * JR n
-   * Description:
-   *  Add n to current address and jump to it.
-   * Use with:
-   *  n = one byte signed immediate value
-   */
-  JRn() {}
-  /**
-   * JR cc,n
-   * Description:
-   *  If following condition is true then add n to current
-   *  address and jump to it:
-   * Use with:
-   *  n = one byte signed immediate value
-   *  cc = NZ, Jump if Z flag is reset.
-   *  cc = Z, Jump if Z flag is set.
-   *  cc = NC, Jump if C flag is reset.
-   *  cc = C, Jump if C flag is set.
-   */
-  JRccn(cc) {}
-  /**
-   * CALL nn
-   * Description:
-   *  Push address of next instruction onto stack and then
-   *  jump to address nn.
-   * Use with:
-   *  nn = two byte immediate value. (LS byte first.)
-   */
-  CALLnn() {}
-  /**
-   * CALL cc,nn
-   * Description:
-   *  Call address n if following condition is true:
-   *  cc = NZ, Call if Z flag is reset.
-   *  cc = Z, Call if Z flag is set.
-   *  cc = NC, Call if C flag is reset.
-   *  cc = C, Call if C flag is set.
-   * Use with:
-   *  nn = two byte immediate value. (LS byte first.)
-   */
-  CALLccnn(cc) {}
-  /**
-   * RST n
-   * Description:
-   *  Push present address onto stack.
-   *  Jump to address $0000 + n.
-   * Use with:
-   *  n = $00,$08,$10,$18,$20,$28,$30,$38
-   */
-  RSTn() {}
-  /**
-   * Returns
-   */
-  /**
-   * RET
-   * Description:
-   *  Pop two bytes from stack & jump to that address.
-   */
-  RET() {}
-  /**
-   * RET cc
-   * Description:
-   *  Return if following condition is true:
-   * Use with:
-   *  cc = NZ, Return if Z flag is reset.
-   *  cc = Z, Return if Z flag is set.
-   *  cc = NC, Return if C flag is reset.
-   *  cc = C, Return if C flag is set.
-   */
-  RETcc(cc) {}
-  /**
-   * RETI
-   * Description:
-   *  Pop two bytes from stack & jump to that address then
-   *  enable interrupts.
-   */
-  RETI() {}
+  get reg2() {
+    return this._reg2;
+  }
+
+  set reg2(value) {
+    if (!this.reg_type[value]) {
+      logger.error(`Invalid register 2: ${value}`);
+      return;
+    }
+    this._reg2 = value;
+  }
+
+  get cond_type() {
+    return {
+      "CT_NONE": 1,
+      "CT_NZ": 1,
+      "CT_Z": 1,
+      "CT_NC": 1,
+      "CT_C": 1
+    }
+  }
+
+  get cond() {
+    return this._cond;
+  }
+
+  set cond(value) {
+    if (!this.cond_type[value]) {
+      logger.error(`Invalid condition: ${value}`);
+      return;
+    }
+    this._cond = value;
+  }
+
+  get param() {
+    return this._param;
+  }
+
+  set param(value) {
+    this._param = utils.uint8_t(value);
+  }
+
+  instructionByOpcode(opcode) {
+    opcode = utils.uint8_t(opcode);
+
+    const instructions = {
+      0x00: ["NOP", "AM_IMP"],
+      0x01: ["LD", "AM_R_D16", "RT_BC"],
+      0x02: ["LD", "AM_R_MR", "RT_BC", "RT_A"],
+      0x03: ["INC", "AM_R", "RT_BC"],
+      0x04: ["INC", "AM_R", "RT_B"],
+      0x05: ["DEC", "AM_R", "RT_B"],
+      0x06: ["LD", "AM_R_D8", "RT_B"],
+      0x07: ["RLCA", "AM_IMP"],
+      0x08: ["LD", "AM_A16_R"],
+      0x09: ["ADD", "AM_R_R", "RT_HL", "RT_BC"],
+      0x0A: ["LD", "AM_R_MR", "RT_A", "RT_BC"],
+      0x0B: ["DEC", "AM_R", "RT_BC"],
+      0x0C: ["INC", "AM_R", "RT_C"],
+      0x0D: ["DEC", "AM_R", "RT_C"],
+      0x0E: ["LD", "AM_R_D8", "RT_C"],
+      0x0F: ["RRCA", "AM_IMP"],
+      0x10: ["STOP", "AM_D8"],
+      0x11: ["LD", "AM_R_D16", "RT_DE"],
+      0x12: ["LD", "AM_R_MR", "RT_DE", "RT_A"],
+      0x13: ["INC", "AM_R", "RT_DE"],
+      0x14: ["INC", "AM_R", "RT_D"],
+      0x15: ["DEC", "AM_R", "RT_D"],
+      0x16: ["LD", "AM_R_D8", "RT_D"],
+      0x17: ["RLA", "AM_IMP"],
+      0x18: ["JR", "AM_D8"],
+      0x19: ["ADD", "AM_R_R", "RT_HL", "RT_DE"],
+      0x1A: ["LD", "AM_R_MR", "RT_A", "RT_DE"],
+      0x1B: ["DEC", "AM_R", "RT_DE"],
+      0x1C: ["INC", "AM_R", "RT_E"],
+      0x1D: ["DEC", "AM_R", "RT_E"],
+      0x1E: ["LD", "AM_R_D8", "RT_E"],
+      0x1F: ["RRA", "AM_IMP"],
+      0x20: ["JR", "AM_D8", "CT_NZ"],
+      0x21: ["LD", "AM_R_D16", "RT_HL"],
+      0x22: ["LD", "AM_HLI_R", "RT_A"],
+      0x23: ["INC", "AM_R", "RT_HL"],
+      0x24: ["INC", "AM_R", "RT_H"],
+      0x25: ["DEC", "AM_R", "RT_H"],
+      0x26: ["LD", "AM_R_D8", "RT_H"],
+      0x27: ["DAA", "AM_IMP"],
+      0x28: ["JR", "AM_D8", "CT_Z"],
+      0x29: ["ADD", "AM_R_R", "RT_HL", "RT_HL"],
+      0x2A: ["LD", "AM_A8_R", "RT_HL"],
+      0x2B: ["DEC", "AM_R", "RT_HL"],
+      0x2C: ["INC", "AM_R", "RT_L"],
+      0x2D: ["DEC", "AM_R", "RT_L"],
+      0x2E: ["LD", "AM_R_D8", "RT_L"],
+      0x2F: ["CPL", "AM_IMP"],
+      0x30: ["JR", "AM_D8", "CT_NC"],
+      0x31: ["LD", "AM_R_D16", "RT_SP"],
+      0x32: ["LD", "AM_HLD_R", "RT_A"],
+      0x33: ["INC", "AM_R", "RT_SP"],
+      0x34: ["INC", "AM_MR", "RT_HL"],
+      0x35: ["DEC", "AM_MR", "RT_HL"],
+      0x36: ["LD", "AM_MR_D8", "RT_HL"],
+      0x37: ["SCF", "AM_IMP"],
+      0x38: ["JR", "AM_D8", "CT_C"],
+      0x39: ["ADD", "AM_R_R", "RT_HL", "RT_SP"],
+      0x3A: ["LD", "AM_A8_R", "RT_A"],
+      0x3B: ["DEC", "AM_R", "RT_SP"],
+      0x3C: ["INC", "AM_R", "RT_A"],
+      0x3D: ["DEC", "AM_R", "RT_A"],
+      0x3E: ["LD", "AM_R_D8", "RT_A"],
+      0x3F: ["CCF", "AM_IMP"],
+      0x40: ["LD", "AM_R_R", "RT_B", "RT_B"],
+      0x41: ["LD", "AM_R_R", "RT_B", "RT_C"],
+      0x42: ["LD", "AM_R_R", "RT_B", "RT_D"],
+      0x43: ["LD", "AM_R_R", "RT_B", "RT_E"],
+      0x44: ["LD", "AM_R_R", "RT_B", "RT_H"],
+      0x45: ["LD", "AM_R_R", "RT_B", "RT_L"],
+      0x46: ["LD", "AM_R_MR", "RT_B", "RT_HL"],
+      0x47: ["LD", "AM_R_R", "RT_B", "RT_A"],
+      0x48: ["LD", "AM_R_R", "RT_C", "RT_B"],
+      0x49: ["LD", "AM_R_R", "RT_C", "RT_C"],
+      0x4A: ["LD", "AM_R_R", "RT_C", "RT_D"],
+      0x4B: ["LD", "AM_R_R", "RT_C", "RT_E"],
+      0x4C: ["LD", "AM_R_R", "RT_C", "RT_H"],
+      0x4D: ["LD", "AM_R_R", "RT_C", "RT_L"],
+      0x4E: ["LD", "AM_R_MR", "RT_C", "RT_HL"],
+      0x4F: ["LD", "AM_R_R", "RT_C", "RT_A"],
+      0x50: ["LD", "AM_R_R", "RT_D", "RT_B"],
+      0x51: ["LD", "AM_R_R", "RT_D", "RT_C"],
+      0x52: ["LD", "AM_R_R", "RT_D", "RT_D"],
+      0x53: ["LD", "AM_R_R", "RT_D", "RT_E"],
+      0x54: ["LD", "AM_R_R", "RT_D", "RT_H"],
+      0x55: ["LD", "AM_R_R", "RT_D", "RT_L"],
+      0x56: ["LD", "AM_R_MR", "RT_D", "RT_HL"],
+      0x57: ["LD", "AM_R_R", "RT_D", "RT_A"],
+      0x58: ["LD", "AM_R_R", "RT_E", "RT_B"],
+      0x59: ["LD", "AM_R_R", "RT_E", "RT_C"],
+      0x5A: ["LD", "AM_R_R", "RT_E", "RT_D"],
+      0x5B: ["LD", "AM_R_R", "RT_E", "RT_E"],
+      0x5C: ["LD", "AM_R_R", "RT_E", "RT_H"],
+      0x5D: ["LD", "AM_R_R", "RT_E", "RT_L"],
+      0x5E: ["LD", "AM_R_MR", "RT_E", "RT_HL"],
+      0x5F: ["LD", "AM_R_R", "RT_E", "RT_A"],
+      0x60: ["LD", "AM_R_R", "RT_H", "RT_B"],
+      0x61: ["LD", "AM_R_R", "RT_H", "RT_C"],
+      0x62: ["LD", "AM_R_R", "RT_H", "RT_D"],
+      0x63: ["LD", "AM_R_R", "RT_H", "RT_E"],
+      0x64: ["LD", "AM_R_R", "RT_H", "RT_H"],
+      0x65: ["LD", "AM_R_R", "RT_H", "RT_L"],
+      0x66: ["LD", "AM_R_MR", "RT_H", "RT_HL"],
+      0x67: ["LD", "AM_R_R", "RT_H", "RT_A"],
+      0x68: ["LD", "AM_R_R", "RT_L", "RT_B"],
+      0x69: ["LD", "AM_R_R", "RT_L", "RT_C"],
+      0x6A: ["LD", "AM_R_R", "RT_L", "RT_D"],
+      0x6B: ["LD", "AM_R_R", "RT_L", "RT_E"],
+      0x6C: ["LD", "AM_R_R", "RT_L", "RT_H"],
+      0x6D: ["LD", "AM_R_R", "RT_L", "RT_L"],
+      0x6E: ["LD", "AM_R_MR", "RT_L", "RT_HL"],
+      0x6F: ["LD", "AM_R_R", "RT_L", "RT_A"],
+      0x70: ["LD", "AM_MR_R", "RT_HL", "RT_B"],
+      0x71: ["LD", "AM_MR_R", "RT_HL", "RT_C"],
+      0x72: ["LD", "AM_MR_R", "RT_HL", "RT_D"],
+      0x73: ["LD", "AM_MR_R", "RT_HL", "RT_E"],
+      0x74: ["LD", "AM_MR_R", "RT_HL", "RT_H"],
+      0x75: ["LD", "AM_MR_R", "RT_HL", "RT_L"],
+      0x76: ["HALT", "AM_IMP"],
+      0x77: ["LD", "AM_MR_R", "RT_HL", "RT_A"],
+      0x78: ["LD", "AM_R_R", "RT_A", "RT_B"],
+      0x79: ["LD", "AM_R_R", "RT_A", "RT_C"],
+      0x7A: ["LD", "AM_R_R", "RT_A", "RT_D"],
+      0x7B: ["LD", "AM_R_R", "RT_A", "RT_E"],
+      0x7C: ["LD", "AM_R_R", "RT_A", "RT_H"],
+      0x7D: ["LD", "AM_R_R", "RT_A", "RT_L"],
+      0x7E: ["LD", "AM_R_MR", "RT_A", "RT_HL"],
+      0x7F: ["LD", "AM_R_R", "RT_A", "RT_A"],
+      0x80: ["ADD", "AM_R_R", "RT_A", "RT_B"],
+      0x81: ["ADD", "AM_R_R", "RT_A", "RT_C"],
+      0x82: ["ADD", "AM_R_R", "RT_A", "RT_D"],
+      0x83: ["ADD", "AM_R_R", "RT_A", "RT_E"],
+      0x84: ["ADD", "AM_R_R", "RT_A", "RT_H"],
+      0x85: ["ADD", "AM_R_R", "RT_A", "RT_L"],
+      0x86: ["ADD", "AM_R_MR", "RT_A", "RT_HL"],
+      0x87: ["ADD", "AM_R_R", "RT_A", "RT_A"],
+      0x88: ["ADC", "AM_R_R", "RT_A", "RT_B"],
+      0x89: ["ADC", "AM_R_R", "RT_A", "RT_C"],
+      0x8A: ["ADC", "AM_R_R", "RT_A", "RT_D"],
+      0x8B: ["ADC", "AM_R_R", "RT_A", "RT_E"],
+      0x8C: ["ADC", "AM_R_R", "RT_A", "RT_H"],
+      0x8D: ["ADC", "AM_R_R", "RT_A", "RT_L"],
+      0x8E: ["ADC", "AM_R_MR", "RT_A", "RT_HL"],
+      0x8F: ["ADC", "AM_R_R", "RT_A", "RT_A"],
+      0x90: ["SUB", "AM_R_R", "RT_A", "RT_B"],
+      0x91: ["SUB", "AM_R_R", "RT_A", "RT_C"],
+      0x92: ["SUB", "AM_R_R", "RT_A", "RT_D"],
+      0x93: ["SUB", "AM_R_R", "RT_A", "RT_E"],
+      0x94: ["SUB", "AM_R_R", "RT_A", "RT_H"],
+      0x95: ["SUB", "AM_R_R", "RT_A", "RT_L"],
+      0x96: ["SUB", "AM_R_MR", "RT_A", "RT_HL"],
+      0x97: ["SUB", "AM_R_R", "RT_A", "RT_A"],
+      0x98: ["SBC", "AM_R_R", "RT_A", "RT_B"],
+      0x99: ["SBC", "AM_R_R", "RT_A", "RT_C"],
+      0x9A: ["SBC", "AM_R_R", "RT_A", "RT_D"],
+      0x9B: ["SBC", "AM_R_R", "RT_A", "RT_E"],
+      0x9C: ["SBC", "AM_R_R", "RT_A", "RT_H"],
+      0x9D: ["SBC", "AM_R_R", "RT_A", "RT_L"],
+      0x9E: ["SBC", "AM_R_MR", "RT_A", "RT_HL"],
+      0x9F: ["SBC", "AM_R_R", "RT_A", "RT_A"],
+      0xA0: ["AND", "AM_R_R", "RT_A", "RT_B"],
+      0xA1: ["AND", "AM_R_R", "RT_A", "RT_C"],
+      0xA2: ["AND", "AM_R_R", "RT_A", "RT_D"],
+      0xA3: ["AND", "AM_R_R", "RT_A", "RT_E"],
+      0xA4: ["AND", "AM_R_R", "RT_A", "RT_H"],
+      0xA5: ["AND", "AM_R_R", "RT_A", "RT_L"],
+      0xA6: ["AND", "AM_R_MR", "RT_A", "RT_HL"],
+      0xA7: ["AND", "AM_R_R", "RT_A", "RT_A"],
+      0xA8: ["XOR", "AM_R_R", "RT_A", "RT_B"],
+      0xA9: ["XOR", "AM_R_R", "RT_A", "RT_C"],
+      0xAA: ["XOR", "AM_R_R", "RT_A", "RT_D"],
+      0xAB: ["XOR", "AM_R_R", "RT_A", "RT_E"],
+      0xAC: ["XOR", "AM_R_R", "RT_A", "RT_H"],
+      0xAD: ["XOR", "AM_R_R", "RT_A", "RT_L"],
+      0xAE: ["XOR", "AM_R_MR", "RT_A", "RT_HL"],
+      0xAF: ["XOR", "AM_R_R", "RT_A", "RT_A"],
+      0xB0: ["OR", "AM_R_R", "RT_A", "RT_B"],
+      0xB1: ["OR", "AM_R_R", "RT_A", "RT_C"],
+      0xB2: ["OR", "AM_R_R", "RT_A", "RT_D"],
+      0xB3: ["OR", "AM_R_R", "RT_A", "RT_E"],
+      0xB4: ["OR", "AM_R_R", "RT_A", "RT_H"],
+      0xB5: ["OR", "AM_R_R", "RT_A", "RT_L"],
+      0xB6: ["OR", "AM_R_MR", "RT_A", "RT_HL"],
+      0xB7: ["OR", "AM_R_R", "RT_A", "RT_A"],
+      0xB8: ["CP", "AM_R_R", "RT_A", "RT_B"],
+      0xB9: ["CP", "AM_R_R", "RT_A", "RT_C"],
+      0xBA: ["CP", "AM_R_R", "RT_A", "RT_D"],
+      0xBB: ["CP", "AM_R_R", "RT_A", "RT_E"],
+      0xBC: ["CP", "AM_R_R", "RT_A", "RT_H"],
+      0xBD: ["CP", "AM_R_R", "RT_A", "RT_L"],
+      0xBE: ["CP", "AM_R_MR", "RT_A", "RT_HL"],
+      0xBF: ["CP", "AM_R_R", "RT_A", "RT_A"],
+      0xC0: ["RET", "AM_COND", "CT_NZ"],
+      0xC1: ["POP", "AM_R", "RT_BC"],
+      0xC2: ["JP", "AM_COND", "CT_NZ"],
+      0xC3: ["JP", "AM_A16"],
+      0xC4: ["CALL", "AM_COND", "CT_NZ"],
+      0xC5: ["PUSH", "AM_R", "RT_BC"],
+      0xC6: ["ADD", "AM_R_D8", "RT_A"],
+      0xC7: ["RST", "AM_IMP", 0x00],
+      0xC8: ["RET", "AM_COND", "CT_Z"],
+      0xC9: ["RET", "AM_IMP"],
+      0xCA: ["JP", "AM_COND", "CT_Z"],
+      0xCB: ["PREFIX", "AM_IMP"],
+      0xCC: ["CALL", "AM_COND", "CT_Z"],
+      0xCD: ["CALL", "AM_A16"],
+      0xCE: ["ADC", "AM_R_D8", "RT_A"],
+      0xCF: ["RST", "AM_IMP", 0x08],
+      0xD0: ["RET", "AM_COND", "CT_NC"],
+      0xD1: ["POP", "AM_R", "RT_DE"],
+      0xD2: ["JP", "AM_COND", "CT_NC"],
+      0xD3: ["INVALID", "AM_IMP"],
+      0xD4: ["CALL", "AM_COND", "CT_NC"],
+      0xD5: ["PUSH", "AM_R", "RT_DE"],
+      0xD6: ["SUB", "AM_R_D8", "RT_A"],
+      0xD7: ["RST", "AM_IMP", 0x10],
+      0xD8: ["RET", "AM_COND", "CT_C"],
+      0xD9: ["RETI", "AM_IMP"],
+      0xDA: ["JP", "AM_COND", "CT_C"],
+      0xDB: ["INVALID", "AM_IMP"],
+      0xDC: ["CALL", "AM_COND", "CT_C"],
+      0xDD: ["INVALID", "AM_IMP"],
+      0xDE: ["SBC", "AM_R_D8", "RT_A"],
+      0xDF: ["RST", "AM_IMP", 0x18],
+      0xE0: ["LD", "AM_A8_R", "RT_A"],
+      0xE1: ["POP", "AM_R", "RT_HL"],
+      0xE2: ["LD", "AM_MR_R", "RT_C", "RT_A"],
+      0xE3: ["INVALID", "AM_IMP"],
+      0xE4: ["INVALID", "AM_IMP"],
+      0xE5: ["PUSH", "AM_R", "RT_HL"],
+      0xE6: ["AND", "AM_R_D8", "RT_A"],
+      0xE7: ["RST", "AM_IMP", 0x20],
+      0xE8: ["ADD", "AM_SP_D8"],
+      0xE9: ["JP", "AM_HL"],
+      0xEA: ["LD", "AM_A16_R", "RT_A"],
+      0xEB: ["INVALID", "AM_IMP"],
+      0xEC: ["INVALID", "AM_IMP"],
+      0xED: ["INVALID", "AM_IMP"],
+      0xEE: ["XOR", "AM_R_D8", "RT_A"],
+      0xEF: ["RST", "AM_IMP", 0x28],
+      0xF0: ["LD", "AM_R_A8", "RT_A"],
+      0xF1: ["POP", "AM_R", "RT_AF"],
+      0xF2: ["LD", "AM_R_MR", "RT_A", "RT_C"],
+      0xF3: ["DI", "AM_IMP"],
+      0xF4: ["INVALID", "AM_IMP"],
+      0xF5: ["PUSH", "AM_R", "RT_AF"],
+      0xF6: ["OR", "AM_R_D8", "RT_A"],
+      0xF7: ["RST", "AM_IMP", 0x30],
+      0xF8: ["LD", "AM_HL_SPR", "RT_SP"],
+      0xF9: ["LD", "AM_R_R", "RT_SP", "RT_HL"],
+      0xFA: ["LD", "AM_R_A16", "RT_A"],
+      0xFB: ["EI", "AM_IMP"],
+      0xFC: ["INVALID", "AM_IMP"],
+      0xFD: ["INVALID", "AM_IMP"],
+      0xFE: ["CP", "AM_R_D8", "RT_A"],
+      0xFF: ["RST", "AM_IMP", 0x3]
+    };
+
+    if (!instructions[opcode]) {
+      logger.error(`Invalid opcode: ${opcode}`);
+      return;
+    }
+
+    return instructions[opcode];
+  }
 }
